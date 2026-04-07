@@ -1,0 +1,181 @@
+{
+  "name": "TradingView Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "tradingview",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "tv-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "tradingview-signal"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst expectedPassphrase = $env.TRADINGVIEW_WEBHOOK_SECRET;\n\nif (!body || !body.passphrase) {\n  throw new Error('Missing passphrase in request body');\n}\n\nif (body.passphrase !== expectedPassphrase) {\n  throw new Error('Invalid passphrase — request rejected');\n}\n\nconst { passphrase, ...safeBody } = body;\n\nreturn [{\n  json: {\n    validated: true,\n    payload: safeBody,\n    received_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "tv-validate",
+      "name": "Validate Passphrase",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json.payload;\n\nconst symbol = payload.ticker || payload.symbol || '';\nconst side = (payload.action || payload.side || payload.order || '').toLowerCase();\nconst price = parseFloat(payload.price || payload.close || 0);\nconst timeframe = payload.interval || payload.timeframe || '';\nconst strategy = payload.strategy || payload.strategy_name || 'unknown';\nconst exchange = payload.exchange || '';\nconst volume = parseFloat(payload.volume || 0);\nconst comment = payload.comment || payload.message || '';\n\nif (!symbol) {\n  throw new Error('Missing required field: symbol/ticker');\n}\n\nif (!['buy', 'sell', 'long', 'short', 'close', 'exit'].includes(side)) {\n  throw new Error(`Invalid side: ${side}. Must be one of: buy, sell, long, short, close, exit`);\n}\n\nconst normalizedSide = (side === 'long' || side === 'buy') ? 'buy' : (side === 'short' || side === 'sell') ? 'sell' : side;\n\nreturn [{\n  json: {\n    signal: {\n      symbol: symbol.toUpperCase(),\n      side: normalizedSide,\n      price: price,\n      timeframe: timeframe,\n      strategy: strategy,\n      exchange: exchange,\n      volume: volume,\n      comment: comment,\n      source: 'tradingview',\n      received_at: $input.first().json.received_at\n    }\n  }\n}];"
+      },
+      "id": "tv-parse",
+      "name": "Parse Signal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/trades",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.signal) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "tv-enqueue-trade",
+      "name": "Enqueue Trade Signal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/agent/log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'tradingview_signal_received', signal: $json.signal || $('Parse Signal').item.json.signal, trade_enqueue_response: $json, timestamp: $now.toISO() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "tv-log",
+      "name": "Log Signal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Signal received and enqueued', signal: $('Parse Signal').item.json.signal }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "tv-respond",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1320, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Passphrase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Passphrase": {
+      "main": [
+        [
+          {
+            "node": "Parse Signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Signal": {
+      "main": [
+        [
+          {
+            "node": "Enqueue Trade Signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enqueue Trade Signal": {
+      "main": [
+        [
+          {
+            "node": "Log Signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Signal": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "mars-agent"
+    },
+    {
+      "name": "tradingview"
+    },
+    {
+      "name": "webhook"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "1"
+}

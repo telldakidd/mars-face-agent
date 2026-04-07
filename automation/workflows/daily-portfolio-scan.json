@@ -1,0 +1,310 @@
+{
+  "name": "Daily Portfolio Scan",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "dps-trigger",
+      "name": "Daily 9AM UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_URL }}/api/clients",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "dps-get-clients",
+      "name": "Get All Clients",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "dps-split",
+      "name": "Split Clients",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_URL }}/api/trades/{{ $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $now.format('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "dps-get-trades",
+      "name": "Get Client Trades",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trades = $input.first().json;\nconst clientId = $('Split Clients').item.json.id;\nconst clientName = $('Split Clients').item.json.name;\nconst portfolioValue = $('Split Clients').item.json.portfolio_value || 0;\n\nconst tradeList = Array.isArray(trades) ? trades : (trades.data || []);\n\nlet totalPnl = 0;\nlet wins = 0;\nlet losses = 0;\n\nfor (const trade of tradeList) {\n  const pnl = parseFloat(trade.pnl || 0);\n  totalPnl += pnl;\n  if (pnl > 0) wins++;\n  else if (pnl < 0) losses++;\n}\n\nconst totalTrades = wins + losses;\nconst winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0.0';\nconst drawdownPct = portfolioValue > 0 ? ((Math.abs(Math.min(totalPnl, 0)) / portfolioValue) * 100).toFixed(2) : '0.00';\n\nreturn [{\n  json: {\n    client_id: clientId,\n    client_name: clientName,\n    date: new Date().toISOString().split('T')[0],\n    total_pnl: totalPnl.toFixed(2),\n    win_count: wins,\n    loss_count: losses,\n    total_trades: totalTrades,\n    win_rate: parseFloat(winRate),\n    position_count: tradeList.filter(t => t.status === 'open').length,\n    drawdown_pct: parseFloat(drawdownPct),\n    portfolio_value: portfolioValue\n  }\n}];"
+      },
+      "id": "dps-compute",
+      "name": "Compute Daily PnL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/agent/log",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'daily_portfolio_scan', client_id: $json.client_id, client_name: $json.client_name, date: $json.date, summary: { total_pnl: $json.total_pnl, win_rate: $json.win_rate, total_trades: $json.total_trades, position_count: $json.position_count, drawdown_pct: $json.drawdown_pct, portfolio_value: $json.portfolio_value }, timestamp: $now.toISO() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "dps-log",
+      "name": "Log Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "drawdown-check",
+              "leftValue": "={{ $json.drawdown_pct }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dps-if-drawdown",
+      "name": "Drawdown > 5%?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [1540, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/agent/escalate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ severity: 'P1', reason: 'daily_drawdown_exceeded', client_id: $json.client_id, client_name: $json.client_name, drawdown_pct: $json.drawdown_pct, total_pnl: $json.total_pnl, action_taken: 'trading_paused', timestamp: $now.toISO() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "dps-escalate",
+      "name": "Escalate Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "",
+        "options": {}
+      },
+      "id": "dps-no-escalation",
+      "name": "No Escalation Needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1760, 420]
+    }
+  ],
+  "connections": {
+    "Daily 9AM UTC": {
+      "main": [
+        [
+          {
+            "node": "Get All Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Clients": {
+      "main": [
+        [
+          {
+            "node": "Split Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Clients": {
+      "main": [
+        [
+          {
+            "node": "Get Client Trades",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Client Trades": {
+      "main": [
+        [
+          {
+            "node": "Compute Daily PnL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Daily PnL": {
+      "main": [
+        [
+          {
+            "node": "Log Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Summary": {
+      "main": [
+        [
+          {
+            "node": "Drawdown > 5%?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drawdown > 5%?": {
+      "main": [
+        [
+          {
+            "node": "Escalate Client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Escalation Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Client": {
+      "main": [
+        [
+          {
+            "node": "Split Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Escalation Needed": {
+      "main": [
+        [
+          {
+            "node": "Split Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "mars-agent"
+    },
+    {
+      "name": "portfolio"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "1"
+}

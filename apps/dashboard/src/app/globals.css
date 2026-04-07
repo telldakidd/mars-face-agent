@@ -1,0 +1,292 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── DYSTOPIAN BASE ─── */
+body {
+  background-color: #020204;
+  overflow-x: hidden;
+}
+
+/* CRT scanline overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 255, 200, 0.015) 0px,
+    rgba(0, 255, 200, 0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Subtle screen flicker */
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.92; }
+  97% { opacity: 0.98; }
+  98% { opacity: 0.94; }
+}
+
+body {
+  animation: flicker 8s infinite;
+}
+
+/* Glitch text effect */
+@keyframes glitch-shift {
+  0%, 90%, 100% { transform: translate(0); }
+  92% { transform: translate(-2px, 1px); }
+  94% { transform: translate(2px, -1px); }
+  96% { transform: translate(-1px, -1px); }
+  98% { transform: translate(1px, 1px); }
+}
+
+.glitch-text {
+  animation: glitch-shift 6s infinite;
+  position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.glitch-text::before {
+  color: #ff003c;
+  animation: glitch-clip-1 4s infinite linear alternate-reverse;
+  clip-path: inset(20% 0 60% 0);
+  left: 2px;
+}
+
+.glitch-text::after {
+  color: #00ffc8;
+  animation: glitch-clip-2 4s infinite linear alternate-reverse;
+  clip-path: inset(60% 0 10% 0);
+  left: -2px;
+}
+
+@keyframes glitch-clip-1 {
+  0% { clip-path: inset(20% 0 60% 0); }
+  20% { clip-path: inset(50% 0 30% 0); }
+  40% { clip-path: inset(10% 0 70% 0); }
+  60% { clip-path: inset(80% 0 5% 0); }
+  80% { clip-path: inset(35% 0 45% 0); }
+  100% { clip-path: inset(60% 0 20% 0); }
+}
+
+@keyframes glitch-clip-2 {
+  0% { clip-path: inset(60% 0 10% 0); }
+  20% { clip-path: inset(30% 0 50% 0); }
+  40% { clip-path: inset(70% 0 10% 0); }
+  60% { clip-path: inset(5% 0 80% 0); }
+  80% { clip-path: inset(45% 0 35% 0); }
+  100% { clip-path: inset(20% 0 60% 0); }
+}
+
+/* Neon pulse glow */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 255, 200, 0.2),
+                0 0 20px rgba(0, 255, 200, 0.05),
+                inset 0 0 15px rgba(0, 255, 200, 0.03);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(0, 255, 200, 0.35),
+                0 0 40px rgba(0, 255, 200, 0.1),
+                inset 0 0 25px rgba(0, 255, 200, 0.05);
+  }
+}
+
+@keyframes neon-pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 0, 60, 0.2),
+                0 0 20px rgba(255, 0, 60, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 0, 60, 0.35),
+                0 0 40px rgba(255, 0, 60, 0.1);
+  }
+}
+
+/* Text neon glow */
+@keyframes text-glow {
+  0%, 100% { text-shadow: 0 0 8px rgba(0, 255, 200, 0.4), 0 0 25px rgba(0, 255, 200, 0.15); }
+  50% { text-shadow: 0 0 12px rgba(0, 255, 200, 0.6), 0 0 40px rgba(0, 255, 200, 0.25); }
+}
+
+.text-neon-glow {
+  animation: text-glow 3s ease-in-out infinite;
+}
+
+/* Danger glow */
+.card-danger-glow {
+  animation: neon-pulse-red 4s ease-in-out infinite;
+}
+
+/* Card glow effect */
+.card-glow {
+  animation: neon-pulse 4s ease-in-out infinite;
+}
+
+/* Moving grid background */
+@keyframes grid-scroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 50px; }
+}
+
+.dystopia-grid {
+  background-image:
+    linear-gradient(rgba(0, 255, 200, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 200, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: grid-scroll 20s linear infinite;
+}
+
+/* Hex pattern overlay */
+.hex-pattern {
+  background-image: radial-gradient(circle at 25% 25%, rgba(0, 255, 200, 0.02) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* Corner brackets on cards */
+.bracket-corners {
+  position: relative;
+}
+
+.bracket-corners::before,
+.bracket-corners::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+
+.bracket-corners::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid rgba(0, 255, 200, 0.5);
+  border-left: 2px solid rgba(0, 255, 200, 0.5);
+}
+
+.bracket-corners::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid rgba(0, 255, 200, 0.5);
+  border-right: 2px solid rgba(0, 255, 200, 0.5);
+}
+
+/* Red bracket variant */
+.bracket-corners-red::before {
+  border-top-color: rgba(255, 0, 60, 0.5);
+  border-left-color: rgba(255, 0, 60, 0.5);
+}
+
+.bracket-corners-red::after {
+  border-bottom-color: rgba(255, 0, 60, 0.5);
+  border-right-color: rgba(255, 0, 60, 0.5);
+}
+
+/* Data stream line */
+@keyframes data-stream {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* Horizontal scan */
+@keyframes h-scan {
+  0%, 100% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.5; }
+  50% { opacity: 0.3; }
+  90% { opacity: 0.5; }
+  95% { transform: translateY(100%); opacity: 0; }
+}
+
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 200, 0.3), transparent);
+  animation: h-scan 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Typing cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: "█";
+  animation: blink 1s step-end infinite;
+  color: rgba(0, 255, 200, 0.6);
+  font-size: 0.8em;
+  margin-left: 2px;
+}
+
+/* Warning stripe pattern */
+.warning-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 5px,
+    rgba(255, 180, 0, 0.05) 5px,
+    rgba(255, 180, 0, 0.05) 10px
+  );
+}
+
+/* Status dot pulse */
+@keyframes status-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 200, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 255, 200, 0); }
+}
+
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* Custom scrollbar — dystopian */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020204;
+  border-left: 1px solid rgba(0, 255, 200, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 200, 0.15);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 200, 0.3);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 200, 0.15) #020204;
+}
+
+/* Mono font for data */
+.font-mono-data {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}

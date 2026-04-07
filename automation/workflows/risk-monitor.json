@@ -1,0 +1,256 @@
+{
+  "name": "Risk Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "rm-trigger",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_URL }}/api/clients",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rm-get-clients",
+      "name": "Get All Clients",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "rm-split",
+      "name": "Split Clients",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const client = $input.first().json;\nconst clientId = client.id;\nconst clientName = client.name;\nconst tier = client.risk_tier || 'conservative';\nconst portfolioValue = parseFloat(client.portfolio_value || 0);\nconst currentDrawdown = parseFloat(client.current_drawdown_pct || 0);\nconst openPositions = parseInt(client.open_positions || 0, 10);\nconst largestPositionPct = parseFloat(client.largest_position_pct || 0);\nconst dailyPnlPct = parseFloat(client.daily_pnl_pct || 0);\n\nconst limits = {\n  conservative: { maxPositionPct: 2, maxDrawdown: 5, maxConcurrent: 5, maxSingleExposure: 25 },\n  moderate:     { maxPositionPct: 5, maxDrawdown: 5, maxConcurrent: 10, maxSingleExposure: 25 },\n  aggressive:   { maxPositionPct: 10, maxDrawdown: 5, maxConcurrent: 15, maxSingleExposure: 25 }\n};\n\nconst tierLimits = limits[tier] || limits.conservative;\nconst breaches = [];\n\nif (currentDrawdown > tierLimits.maxDrawdown) {\n  breaches.push({ rule: 'max_drawdown', limit: tierLimits.maxDrawdown, actual: currentDrawdown, message: `Drawdown ${currentDrawdown}% exceeds ${tierLimits.maxDrawdown}% limit` });\n}\n\nif (openPositions > tierLimits.maxConcurrent) {\n  breaches.push({ rule: 'max_concurrent_positions', limit: tierLimits.maxConcurrent, actual: openPositions, message: `${openPositions} open positions exceeds ${tierLimits.maxConcurrent} limit` });\n}\n\nif (largestPositionPct > tierLimits.maxSingleExposure) {\n  breaches.push({ rule: 'max_single_exposure', limit: tierLimits.maxSingleExposure, actual: largestPositionPct, message: `Single position ${largestPositionPct}% exceeds ${tierLimits.maxSingleExposure}% limit` });\n}\n\nif (dailyPnlPct < -(tierLimits.maxDrawdown)) {\n  breaches.push({ rule: 'daily_loss_limit', limit: tierLimits.maxDrawdown, actual: Math.abs(dailyPnlPct), message: `Daily loss ${Math.abs(dailyPnlPct)}% exceeds ${tierLimits.maxDrawdown}% limit` });\n}\n\nreturn [{\n  json: {\n    client_id: clientId,\n    client_name: clientName,\n    tier: tier,\n    has_breach: breaches.length > 0,\n    breach_count: breaches.length,\n    breaches: breaches,\n    checked_at: new Date().toISOString(),\n    portfolio_value: portfolioValue,\n    current_drawdown: currentDrawdown,\n    open_positions: openPositions,\n    largest_position_pct: largestPositionPct\n  }\n}];"
+      },
+      "id": "rm-check-risk",
+      "name": "Check Risk Thresholds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "breach-check",
+              "leftValue": "={{ $json.has_breach }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "rm-if-breach",
+      "name": "Risk Breach?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/agent/escalate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ severity: $json.breach_count >= 2 ? 'P0' : 'P1', reason: 'risk_threshold_breach', client_id: $json.client_id, client_name: $json.client_name, tier: $json.tier, breaches: $json.breaches, breach_count: $json.breach_count, action_taken: 'trading_paused_pending_review', portfolio_value: $json.portfolio_value, timestamp: $now.toISO() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rm-escalate",
+      "name": "Escalate Risk Breach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mars-api-auth",
+          "name": "Mars API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "all_clear"
+            },
+            {
+              "name": "client_id",
+              "value": "={{ $json.client_id }}"
+            },
+            {
+              "name": "client_name",
+              "value": "={{ $json.client_name }}"
+            },
+            {
+              "name": "message",
+              "value": "No risk breaches detected"
+            },
+            {
+              "name": "checked_at",
+              "value": "={{ $json.checked_at }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "rm-all-clear",
+      "name": "Log All Clear",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1320, 420]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get All Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Clients": {
+      "main": [
+        [
+          {
+            "node": "Split Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Clients": {
+      "main": [
+        [
+          {
+            "node": "Check Risk Thresholds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Risk Thresholds": {
+      "main": [
+        [
+          {
+            "node": "Risk Breach?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Breach?": {
+      "main": [
+        [
+          {
+            "node": "Escalate Risk Breach",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log All Clear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate Risk Breach": {
+      "main": [
+        [
+          {
+            "node": "Split Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log All Clear": {
+      "main": [
+        [
+          {
+            "node": "Split Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "mars-agent"
+    },
+    {
+      "name": "risk"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "1"
+}

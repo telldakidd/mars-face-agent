@@ -1,0 +1,15 @@
+{
+  "name": "mars-face-agent",
+  "private": true,
+  "workspaces": ["apps/*", "backend", "automation"],
+  "scripts": {
+    "dev:dashboard": "npm run dev -w @mars/dashboard",
+    "dev:mobile": "npm run dev -w @mars/mobile",
+    "dev:backend": "npm run dev -w @mars/backend",
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:dashboard\"",
+    "build": "npm run build -w @mars/backend && npm run build -w @mars/dashboard"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
