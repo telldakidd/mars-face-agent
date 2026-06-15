@@ -284,6 +284,75 @@ body {
   scrollbar-color: rgba(0, 255, 200, 0.15) #020204;
 }
 
+/* Trade ticker scroll */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-scroll {
+  animation: ticker-scroll 40s linear infinite;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.ticker-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* Value flash on update */
+@keyframes value-flash {
+  0% { color: #00ffc8; text-shadow: 0 0 20px rgba(0, 255, 200, 0.9), 0 0 40px rgba(0, 255, 200, 0.4); }
+  100% { color: inherit; text-shadow: none; }
+}
+
+.value-flash {
+  animation: value-flash 0.6s ease-out forwards;
+}
+
+/* Amber pulse for warnings */
+@keyframes neon-pulse-amber {
+  0%, 100% { box-shadow: 0 0 5px rgba(255, 180, 0, 0.2), 0 0 20px rgba(255, 180, 0, 0.05); }
+  50% { box-shadow: 0 0 10px rgba(255, 180, 0, 0.4), 0 0 40px rgba(255, 180, 0, 0.12); }
+}
+
+.card-warn-glow {
+  animation: neon-pulse-amber 3s ease-in-out infinite;
+}
+
+/* Vertical data stream lines */
+@keyframes v-stream {
+  0% { transform: translateY(-100vh); opacity: 0; }
+  5% { opacity: 0.4; }
+  95% { opacity: 0.4; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+.data-stream-line {
+  position: absolute;
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 255, 200, 0.4), transparent);
+  animation: v-stream 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Data stream line positions */
+.stream-pos-1 { left: 15%; animation-delay: 0s; }
+.stream-pos-2 { left: 45%; animation-delay: 2s; }
+.stream-pos-3 { left: 75%; animation-delay: 4s; }
+
+/* Segmented bar overlay (lot bars, progress bars) */
+.bar-segments {
+  background-image: repeating-linear-gradient(
+    90deg, transparent, transparent 8px,
+    rgba(0, 0, 0, 0.3) 8px, rgba(0, 0, 0, 0.3) 9px
+  );
+}
+
+/* Dynamic-width bar fill — set --bar-w on the element */
+.bar-fill { width: var(--bar-w, 0%); }
+
 /* Mono font for data */
 .font-mono-data {
   font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', monospace;

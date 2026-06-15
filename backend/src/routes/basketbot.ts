@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { MT5Connector } from "../connectors/mt5.js";
 import { broadcastToClient } from "../websocket.js";
+import { supabase } from "../lib/supabase.js";
 
 export const basketbotRouter = Router();
 const mt5 = new MT5Connector();
@@ -79,6 +80,67 @@ basketbotRouter.get("/status", async (_req: Request, res: Response) => {
       totalProfit: m4rsPositions.reduce((s, p) => s + p.profit, 0),
     },
   });
+});
+
+// GET /api/basketbot/mt5 — live MT5 account info + open positions
+basketbotRouter.get("/mt5", async (_req: Request, res: Response) => {
+  try {
+    await mt5.connect();
+    const [account, positions] = await Promise.all([
+      mt5.getAccountInfo(),
+      mt5.getPositions(),
+    ]);
+    const basketPositions = positions.filter((p) => p.magic === 20251222);
+    res.json({
+      account,
+      basketPositions,
+      allPositions: positions,
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(503).json({ error: (err as Error).message });
+  }
+});
+
+// GET /api/basketbot/stats — total realized P&L + win rate (for client dashboard)
+basketbotRouter.get("/stats", async (_req: Request, res: Response) => {
+  const { data } = await supabase
+    .from("basketbot_trades")
+    .select("pnl, status")
+    .eq("bot", "argomarsbot")
+    .eq("status", "closed");
+
+  const closed = data ?? [];
+  const totalRealized = closed.reduce((s, t) => s + (t.pnl ?? 0), 0);
+  const wins = closed.filter((t) => (t.pnl ?? 0) > 0).length;
+
+  res.json({
+    total_realized_pnl: totalRealized,
+    trade_count: closed.length,
+    win_count: wins,
+    win_rate: closed.length > 0 ? (wins / closed.length) * 100 : 0,
+  });
+});
+
+// GET /api/basketbot/live — current PAMM snapshot for dashboard
+basketbotRouter.get("/live", async (_req: Request, res: Response) => {
+  const { data } = await supabase
+    .from("basketbot_status")
+    .select("*")
+    .eq("bot", "argomarsbot")
+    .single();
+  res.json(data ?? { status: "offline" });
+});
+
+// GET /api/basketbot/trade-history — last 50 trades for dashboard
+basketbotRouter.get("/trade-history", async (_req: Request, res: Response) => {
+  const { data } = await supabase
+    .from("basketbot_trades")
+    .select("*")
+    .eq("bot", "argomarsbot")
+    .order("opened_at", { ascending: false })
+    .limit(50);
+  res.json(data ?? []);
 });
 
 // POST /api/basketbot/m4rs-control — set M4RSBot parameters

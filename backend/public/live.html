@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MARS // ALGO TRADING — LIVE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cyan:   #00ffc8;
+    --red:    #ff003c;
+    --amber:  #ffb400;
+    --green:  #00ff66;
+    --purple: #b833ff;
+    --void:   #020204;
+    --card:   #0a0c14;
+    --border: rgba(0,255,200,0.08);
+  }
+
+  html, body {
+    background: var(--void);
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* CRT scanlines */
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,255,200,0.012) 0px, rgba(0,255,200,0.012) 1px,
+      transparent 1px, transparent 3px);
+  }
+
+  /* Moving grid */
+  .grid-bg {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,255,200,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,200,0.025) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: grid-scroll 20s linear infinite;
+  }
+  @keyframes grid-scroll {
+    0%   { background-position: 0 0; }
+    100% { background-position: 0 50px; }
+  }
+
+  .page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  /* ── HEADER ── */
+  .header {
+    position: relative; overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 28px; margin-bottom: 32px;
+  }
+  .scan-line {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0,255,200,0.35), transparent);
+    animation: h-scan 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes h-scan {
+    0%,100% { top: -2px; opacity: 0; }
+    10% { opacity: 0.6; }
+    50% { top: 100%; opacity: 0.3; }
+    90% { opacity: 0.6; }
+    95% { top: 100%; opacity: 0; }
+  }
+  .header-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  .brand-eye {
+    font-size: 9px; letter-spacing: 0.6em; color: rgba(0,255,200,0.3);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .brand-title {
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 800; letter-spacing: 0.12em;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0,255,200,0.4), 0 0 60px rgba(0,255,200,0.12);
+    animation: title-pulse 4s ease-in-out infinite;
+  }
+  @keyframes title-pulse {
+    0%,100% { text-shadow: 0 0 20px rgba(0,255,200,0.4), 0 0 60px rgba(0,255,200,0.12); }
+    50%      { text-shadow: 0 0 30px rgba(0,255,200,0.6), 0 0 80px rgba(0,255,200,0.2); }
+  }
+  .brand-sub {
+    font-size: 10px; color: rgba(255,255,255,0.2);
+    letter-spacing: 0.3em; margin-top: 6px;
+  }
+  .status-cluster { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid; padding: 6px 12px; font-size: 9px;
+    letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;
+  }
+  .pill-live   { border-color: rgba(0,255,200,0.3); background: rgba(0,255,200,0.05); color: var(--cyan); }
+  .pill-stale  { border-color: rgba(255,180,0,0.3);  background: rgba(255,180,0,0.05);  color: var(--amber); }
+  .pill-offline{ border-color: rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.2); }
+  .pill-danger { border-color: rgba(255,0,60,0.4);   background: rgba(255,0,60,0.08);   color: var(--red); }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  .dot-pulse {
+    box-shadow: 0 0 0 0 currentColor;
+    animation: dot-pulse 2s ease-in-out infinite;
+  }
+  @keyframes dot-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,255,200,0.5); }
+    50%      { box-shadow: 0 0 0 6px rgba(0,255,200,0); }
+  }
+  .last-updated { font-size: 9px; color: rgba(255,255,255,0.15); letter-spacing: 0.15em; }
+
+  /* ── BIG P&L HERO ── */
+  .pnl-hero {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 24px;
+  }
+  @media (max-width: 600px) { .pnl-hero { grid-template-columns: 1fr; } }
+  .pnl-card {
+    position: relative; overflow: hidden;
+    background: var(--card); padding: 28px 24px;
+    border: 1px solid;
+  }
+  .pnl-card-profit { border-color: rgba(0,255,102,0.15); }
+  .pnl-card-equity { border-color: rgba(0,255,200,0.1); }
+  .pnl-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, currentColor, transparent);
+    opacity: 0.3;
+  }
+  .pnl-card-profit::before { color: var(--green); }
+  .pnl-card-equity::before { color: var(--cyan); }
+  /* bracket corners */
+  .pnl-card::after {
+    content: ""; position: absolute;
+    bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 2px solid; border-right: 2px solid;
+    opacity: 0.4;
+  }
+  .pnl-card-profit::after { border-color: var(--green); }
+  .pnl-card-equity::after { border-color: var(--cyan); }
+  .pnl-label {
+    font-size: 9px; color: rgba(255,255,255,0.25);
+    letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 10px;
+  }
+  .pnl-value {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800; letter-spacing: -0.02em;
+    transition: color 0.4s;
+  }
+  .pnl-value.positive { color: var(--green); text-shadow: 0 0 20px rgba(0,255,102,0.3); }
+  .pnl-value.negative { color: var(--red);   text-shadow: 0 0 20px rgba(255,0,60,0.3); }
+  .pnl-value.neutral  { color: rgba(255,255,255,0.7); }
+  .pnl-sub { font-size: 10px; color: rgba(255,255,255,0.2); margin-top: 6px; }
+
+  /* ── STAT GRID ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    padding: 16px; position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, rgba(0,255,200,0.15), transparent);
+  }
+  .stat-label { font-size: 8px; color: rgba(255,255,255,0.2); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-size: 18px; font-weight: 700; }
+  .stat-value.cyan   { color: var(--cyan); }
+  .stat-value.green  { color: var(--green); }
+  .stat-value.amber  { color: var(--amber); }
+  .stat-value.red    { color: var(--red); }
+  .stat-value.white  { color: rgba(255,255,255,0.75); }
+  .stat-value.muted  { color: rgba(255,255,255,0.35); }
+
+  /* ── PHASE / STATUS BANNER ── */
+  .status-banner {
+    border: 1px solid var(--border); background: var(--card);
+    padding: 18px 24px; margin-bottom: 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; position: relative; overflow: hidden;
+  }
+  .status-banner::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, rgba(0,255,200,0.2), transparent);
+  }
+  .status-left { display: flex; align-items: center; gap: 16px; }
+  .phase-badge {
+    border: 1px solid rgba(0,255,200,0.2); background: rgba(0,255,200,0.05);
+    padding: 6px 14px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.25em; color: var(--cyan);
+  }
+  .status-desc { font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 0.1em; }
+  .status-right { text-align: right; }
+  .positions-count { font-size: 22px; font-weight: 700; color: var(--cyan); }
+  .positions-label { font-size: 8px; color: rgba(255,255,255,0.2); letter-spacing: 0.2em; }
+
+  /* ── PERFORMANCE BAR ── */
+  .perf-section { margin-bottom: 24px; }
+  .perf-row {
+    background: var(--card); border: 1px solid var(--border);
+    padding: 16px 20px;
+  }
+  .perf-header {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: rgba(255,255,255,0.2);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .perf-bar-track {
+    height: 4px; background: rgba(255,255,255,0.05);
+    position: relative; overflow: hidden;
+  }
+  .perf-bar-fill {
+    height: 100%; background: var(--green);
+    box-shadow: 0 0 8px rgba(0,255,102,0.4);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .perf-bar-fill.amber { background: var(--amber); box-shadow: 0 0 8px rgba(255,180,0,0.4); }
+  .perf-bar-fill.red   { background: var(--red);   box-shadow: 0 0 8px rgba(255,0,60,0.4); }
+  .perf-sublabels {
+    display: flex; justify-content: space-between;
+    font-size: 8px; color: rgba(255,255,255,0.1);
+    margin-top: 5px;
+  }
+
+  /* ── KILL SWITCH WARNING ── */
+  .kill-warning {
+    border: 1px solid rgba(255,0,60,0.4); background: rgba(255,0,60,0.06);
+    padding: 16px 20px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 12px;
+    animation: danger-glow 3s ease-in-out infinite;
+  }
+  @keyframes danger-glow {
+    0%,100% { box-shadow: 0 0 8px rgba(255,0,60,0.15); }
+    50%      { box-shadow: 0 0 20px rgba(255,0,60,0.3); }
+  }
+  .kill-icon { font-size: 18px; }
+  .kill-text { font-size: 11px; color: var(--red); letter-spacing: 0.15em; font-weight: 700; }
+  .kill-sub  { font-size: 9px; color: rgba(255,0,60,0.5); margin-top: 2px; }
+
+  /* ── TRADE TICKER ── */
+  .ticker-wrap {
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.4); overflow: hidden; height: 30px;
+    display: flex; align-items: center; margin-bottom: 24px;
+    position: relative;
+  }
+  .ticker-wrap::before,
+  .ticker-wrap::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 60px;
+    z-index: 2; pointer-events: none;
+  }
+  .ticker-wrap::before { left: 0;  background: linear-gradient(to right, var(--void), transparent); }
+  .ticker-wrap::after  { right: 0; background: linear-gradient(to left,  var(--void), transparent); }
+  .ticker-inner {
+    display: inline-flex; gap: 40px; white-space: nowrap;
+    animation: ticker 35s linear infinite;
+  }
+  .ticker-inner:hover { animation-play-state: paused; }
+  @keyframes ticker {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .tick-item { font-size: 10px; display: inline-flex; align-items: center; gap: 8px; }
+  .tick-sep  { color: rgba(255,255,255,0.1); }
+  .tick-sym  { color: rgba(255,255,255,0.45); font-weight: 600; }
+  .tick-buy  { color: var(--green); }
+  .tick-sell { color: var(--red); }
+  .tick-pnl-pos { color: var(--green); }
+  .tick-pnl-neg { color: var(--red); }
+  .tick-meta { color: rgba(255,255,255,0.15); }
+
+  /* ── FOOTER ── */
+  .footer {
+    border-top: 1px solid var(--border); padding-top: 20px; margin-top: 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .footer-brand { font-size: 9px; color: rgba(255,255,255,0.1); letter-spacing: 0.3em; }
+  .footer-meta  { font-size: 8px; color: rgba(255,255,255,0.08); letter-spacing: 0.15em; }
+  .footer-live  { font-size: 9px; color: rgba(0,255,200,0.3); letter-spacing: 0.2em; }
+
+  /* ── LOADING STATE ── */
+  .loading { text-align: center; padding: 80px 0; }
+  .loading-text { font-size: 11px; color: rgba(0,255,200,0.4); letter-spacing: 0.4em; }
+  .loading-bar {
+    width: 200px; height: 1px; background: rgba(255,255,255,0.05);
+    margin: 16px auto 0; position: relative; overflow: hidden;
+  }
+  .loading-bar::after {
+    content: ""; position: absolute; inset: 0;
+    background: var(--cyan);
+    animation: loading-sweep 1.5s ease-in-out infinite;
+  }
+  @keyframes loading-sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* number flash */
+  @keyframes num-flash {
+    0%   { color: var(--cyan); text-shadow: 0 0 20px rgba(0,255,200,0.8); }
+    100% { color: inherit; text-shadow: inherit; }
+  }
+  .flash { animation: num-flash 0.7s ease-out; }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<div class="page" id="app">
+  <div class="loading" id="loading">
+    <p class="loading-text">INITIALIZING FEED</p>
+    <div class="loading-bar"></div>
+  </div>
+</div>
+
+<script>
+const API = '';   // same origin — Express serves both this page and /api/*
+let prevEquity = null;
+let prevPnl = null;
+let trades = [];
+
+function fmt(n, d = 2) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function fmtPct(n) {
+  if (n == null) return '—';
+  return (n >= 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (s < 5)   return 'just now';
+  if (s < 60)  return s + 's ago';
+  if (s < 3600)return Math.floor(s / 60) + 'm ago';
+  return Math.floor(s / 3600) + 'h ago';
+}
+function isLive(ts) {
+  return !!ts && Date.now() - new Date(ts).getTime() < 120000;
+}
+function pnlClass(v) {
+  if (v == null) return 'neutral';
+  return v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
+}
+function pnlColor(v) {
+  if (v == null) return 'muted';
+  return v > 0 ? 'green' : v < 0 ? 'red' : 'white';
+}
+function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+async function fetchAll() {
+  const [botRes, statsRes, tradesRes] = await Promise.all([
+    fetch(API + '/api/basketbot/live').then(r => r.ok ? r.json() : {}),
+    fetch(API + '/api/basketbot/stats').then(r => r.ok ? r.json() : {}),
+    fetch(API + '/api/basketbot/trade-history').then(r => r.ok ? r.json() : []),
+  ]);
+  return { bot: botRes, stats: statsRes, trades: tradesRes };
+}
+
+function buildTickerItems(list) {
+  if (!list.length) return '<span class="tick-item"><span class="tick-meta">// NO TRADE HISTORY YET</span></span>';
+  return list.slice(0, 20).map(t => {
+    const pnlStr = t.pnl != null
+      ? `<span class="${t.pnl >= 0 ? 'tick-pnl-pos' : 'tick-pnl-neg'}">${t.pnl >= 0 ? '+' : ''}$${fmt(t.pnl)}</span>`
+      : '';
+    return `
+      <span class="tick-item">
+        <span class="tick-sep">//</span>
+        <span class="tick-sym">${t.symbol}</span>
+        <span class="${t.side === 'buy' ? 'tick-buy' : 'tick-sell'}">${(t.side || '?').toUpperCase()}</span>
+        <span class="tick-meta">${fmt(t.lots, 2)}L</span>
+        ${pnlStr}
+        <span class="tick-meta">${t.opened_at ? timeAgo(t.opened_at) : ''}</span>
+      </span>`;
+  }).join('');
+}
+
+function render({ bot, stats, trades: tradeList }) {
+  const live       = isLive(bot.last_heartbeat);
+  const offline    = !bot.bot || bot.status === 'offline';
+  const killSwitch = !!bot.kill_switch;
+
+  // Combined P&L: realized + floating
+  const realized   = stats.total_realized_pnl ?? 0;
+  const floating   = bot.floating_pnl ?? 0;
+  const totalPnl   = realized + floating;
+  const equity     = bot.equity ?? null;
+
+  // Flash on equity change
+  const equityFlash  = (prevEquity != null && prevEquity !== equity)  ? 'flash' : '';
+  const pnlFlash     = (prevPnl    != null && prevPnl    !== totalPnl) ? 'flash' : '';
+  prevEquity = equity;
+  prevPnl    = totalPnl;
+
+  // Heartbeat time
+  const hbSec = bot.last_heartbeat
+    ? Math.floor((Date.now() - new Date(bot.last_heartbeat).getTime()) / 1000)
+    : null;
+
+  // Status pill
+  let statusPill;
+  if (killSwitch) {
+    statusPill = `<div class="pill pill-danger"><span class="dot"></span>KILL SWITCH ACTIVE</div>`;
+  } else if (offline) {
+    statusPill = `<div class="pill pill-offline"><span class="dot"></span>BOT OFFLINE</div>`;
+  } else if (live) {
+    statusPill = `<div class="pill pill-live"><span class="dot dot-pulse"></span>LIVE${hbSec != null ? ' &bull; ' + hbSec + 's' : ''}</div>`;
+  } else {
+    statusPill = `<div class="pill pill-stale"><span class="dot"></span>STALE &bull; ${hbSec != null ? hbSec + 's' : '?'}</div>`;
+  }
+
+  // Daily loss bar
+  const dlPct   = clamp(((bot.daily_loss_pct ?? 0) / 3) * 100, 0, 100);
+  const dlColor = (bot.daily_loss_pct ?? 0) > 2.5 ? 'red' : (bot.daily_loss_pct ?? 0) > 1.5 ? 'amber' : '';
+
+  // DD bar
+  const ddPct   = clamp(((bot.dd_from_hwm_pct ?? 0) / 30) * 100, 0, 100);
+  const ddColor = (bot.dd_from_hwm_pct ?? 0) > 10 ? 'red' : (bot.dd_from_hwm_pct ?? 0) > 5 ? 'amber' : '';
+
+  // Ticker (duplicate for seamless loop)
+  const tickItems = buildTickerItems(tradeList);
+
+  const html = `
+    <!-- Header -->
+    <header class="header">
+      <div class="scan-line"></div>
+      <div class="header-top">
+        <div>
+          <p class="brand-eye">SYS://MARS.MANAGEMENT // ALGO TRADING TERMINAL</p>
+          <h1 class="brand-title">BASKETBOT</h1>
+          <p class="brand-sub">LIVE PERFORMANCE FEED &bull; AUTO-REFRESHES EVERY 5s</p>
+        </div>
+        <div class="status-cluster">
+          ${statusPill}
+          <div class="last-updated" id="last-updated">—</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Kill switch warning -->
+    ${killSwitch ? `
+    <div class="kill-warning">
+      <span class="kill-icon">⚠</span>
+      <div>
+        <div class="kill-text">KILL SWITCH ACTIVE — TRADING HALTED</div>
+        <div class="kill-sub">Automatic risk protection triggered. No new trades will be opened.</div>
+      </div>
+    </div>` : ''}
+
+    <!-- Big P&L hero -->
+    <div class="pnl-hero">
+      <div class="pnl-card pnl-card-profit">
+        <div class="pnl-label">TOTAL P&amp;L (Realized + Floating)</div>
+        <div class="pnl-value ${pnlClass(totalPnl)} ${pnlFlash}">
+          ${totalPnl >= 0 ? '+' : ''}$${fmt(totalPnl)}
+        </div>
+        <div class="pnl-sub">
+          Realized: ${realized >= 0 ? '+' : ''}$${fmt(realized)} &nbsp;|&nbsp;
+          Floating: ${floating >= 0 ? '+' : ''}$${fmt(floating)}
+        </div>
+      </div>
+      <div class="pnl-card pnl-card-equity">
+        <div class="pnl-label">ACCOUNT EQUITY</div>
+        <div class="pnl-value neutral ${equityFlash}">
+          ${equity != null ? '$' + fmt(equity) : '—'}
+        </div>
+        <div class="pnl-sub">
+          Balance: $${fmt(bot.balance)} &nbsp;|&nbsp;
+          HWM: $${fmt(bot.hwm)}
+        </div>
+      </div>
+    </div>
+
+    <!-- Trade ticker -->
+    <div class="ticker-wrap">
+      <div class="ticker-inner">
+        ${tickItems}${tickItems}
+      </div>
+    </div>
+
+    <!-- Stat grid -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Daily P&amp;L</div>
+        <div class="stat-value ${pnlColor(bot.daily_pnl_pct)}">${fmtPct(bot.daily_pnl_pct)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Weekly P&amp;L</div>
+        <div class="stat-value ${pnlColor(bot.weekly_pnl_pct)}">${fmtPct(bot.weekly_pnl_pct)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Monthly P&amp;L</div>
+        <div class="stat-value ${pnlColor(bot.monthly_pnl_pct)}">${fmtPct(bot.monthly_pnl_pct)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-value ${(stats.win_rate ?? 0) >= 55 ? 'green' : 'amber'}">${fmt(stats.win_rate ?? bot.win_rate)}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Trades</div>
+        <div class="stat-value white">${stats.trade_count ?? bot.total_trades ?? '—'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Open Positions</div>
+        <div class="stat-value cyan">${bot.positions ?? '—'}</div>
+      </div>
+    </div>
+
+    <!-- Phase / status banner -->
+    <div class="status-banner">
+      <div class="status-left">
+        ${bot.phase ? `<div class="phase-badge">${bot.phase}</div>` : ''}
+        <div>
+          <div class="status-desc">
+            ${killSwitch ? '⚠ TRADING HALTED — KILL SWITCH'
+              : bot.lot_reduction_active ? '⚡ LOT REDUCTION ACTIVE'
+              : offline ? 'BOT OFFLINE'
+              : live ? 'BOT RUNNING — MONITORING MARKET'
+              : 'BOT SIGNAL DELAYED'}
+          </div>
+          <div class="status-desc" style="margin-top:4px;font-size:8px;opacity:0.6">
+            Buy ${fmt(bot.buy_lots ?? 0, 2)}L &nbsp;·&nbsp; Sell ${fmt(bot.sell_lots ?? 0, 2)}L &nbsp;·&nbsp; Exposure ${fmt(bot.net_exposure_pct)}%
+          </div>
+        </div>
+      </div>
+      <div class="status-right">
+        <div class="positions-count">${bot.positions ?? 0}</div>
+        <div class="positions-label">OPEN POSITIONS</div>
+      </div>
+    </div>
+
+    <!-- Performance bars -->
+    <div class="perf-section">
+      <div class="perf-row" style="border-bottom:none">
+        <div class="perf-header">
+          <span>DAILY LOSS</span>
+          <span style="color:${(bot.daily_loss_pct ?? 0) > 2.5 ? 'var(--red)' : 'rgba(255,255,255,0.2)'}">${fmt(bot.daily_loss_pct)}% / 3.00% cap</span>
+        </div>
+        <div class="perf-bar-track">
+          <div class="perf-bar-fill ${dlColor}" style="width:${dlPct}%"></div>
+        </div>
+        <div class="perf-sublabels"><span>0%</span><span>3% CAP</span></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-header">
+          <span>DRAWDOWN FROM PEAK</span>
+          <span style="color:${(bot.dd_from_hwm_pct ?? 0) > 5 ? 'var(--amber)' : 'rgba(255,255,255,0.2)'}">${fmt(bot.dd_from_hwm_pct)}% / 30% max</span>
+        </div>
+        <div class="perf-bar-track">
+          <div class="perf-bar-fill ${ddColor}" style="width:${ddPct}%"></div>
+        </div>
+        <div class="perf-sublabels"><span>0%</span><span>30% MAX</span></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-brand">MARS MANAGEMENT // ALGO TRADING DIVISION</div>
+      <div class="footer-live" id="footer-clock">LIVE FEED ACTIVE</div>
+      <div class="footer-meta">DATA UPDATES EVERY 5 SECONDS &bull; MAGIC: 20251222</div>
+    </footer>
+  `;
+
+  document.getElementById('loading')?.remove();
+  document.getElementById('app').innerHTML = html;
+
+  // live clock
+  updateClock();
+}
+
+function updateClock() {
+  const el = document.getElementById('last-updated');
+  const fu = document.getElementById('footer-clock');
+  const now = new Date();
+  const ts = now.toLocaleTimeString('en-US', { hour12: false });
+  if (el) el.textContent = 'UPDATED ' + ts;
+  if (fu) fu.textContent = 'LIVE // ' + ts;
+}
+
+async function tick() {
+  try {
+    const data = await fetchAll();
+    render(data);
+  } catch (e) {
+    // keep showing stale data, just update clock
+    updateClock();
+  }
+}
+
+// Initial load then poll every 5s
+tick();
+setInterval(tick, 5000);
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>

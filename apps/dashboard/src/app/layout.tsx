@@ -16,6 +16,7 @@ function NavSidebar() {
     { href: "/fleet", label: "FLEET", code: "SYS.02", color: "bg-neon-purple" },
     { href: "/provision", label: "PROVISION", code: "SYS.03", color: "bg-neon-amber" },
     { href: "/workflows", label: "WORKFLOWS", code: "SYS.04", color: "bg-neon-green" },
+    { href: "/basketbot", label: "BASKETBOT", code: "SYS.05", color: "bg-neon-amber" },
   ];
 
   return (

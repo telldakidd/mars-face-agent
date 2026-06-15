@@ -1,7 +1,11 @@
 import "dotenv/config";
+import path from "path";
+import { fileURLToPath } from "url";
 import http from "http";
 import express from "express";
 import cors from "cors";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { agentRouter }       from "./routes/agent.js";
 import { authRouter }        from "./routes/auth.js";
 import { agentConfigRouter } from "./routes/agentConfig.js";
@@ -20,6 +24,9 @@ import { businessRouter }    from "./routes/business.js";
 import { crmRouter }         from "./routes/crm.js";
 import { expensesRouter }    from "./routes/expenses.js";
 import { workflowsRouter }  from "./routes/workflows.js";
+import { chatHistoryRouter } from "./routes/chatHistory.js";
+import { notificationsRouter } from "./routes/notifications.js";
+import { eaWebhooksRouter } from "./routes/ea-webhooks.js";
 import { initWebSocket, broadcastAll } from "./websocket.js";
 import { runDailyBriefings } from "./services/morning-briefing.js";
 import { checkAndAlertCalendar } from "./services/economic-calendar.js";
@@ -36,7 +43,14 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Public client-facing live dashboard (no auth required)
+app.use(express.static(path.join(__dirname, "../public")));
+app.get("/live", (_req, res) => {
+  res.sendFile(path.join(__dirname, "../public/live.html"));
+});
+
 // Routes
+app.use("/api",              eaWebhooksRouter);   // EA webhook receiver (heartbeat, pamm_status, trade, settle)
 app.use("/api/auth",         authRouter);
 app.use("/api/agent-config", agentConfigRouter);
 app.use("/api/agent-setup",  agentSetupRouter);
@@ -54,6 +68,8 @@ app.use("/api/avatar",      avatarRouter);
 app.use("/api/business",   businessRouter);
 app.use("/api/crm",        crmRouter);
 app.use("/api/expenses",   expensesRouter);
+app.use("/api/chat",          chatHistoryRouter);
+app.use("/api/notifications", notificationsRouter);
 app.use("/api/workflows",  workflowsRouter);
 
 // HTTP server + WebSocket
