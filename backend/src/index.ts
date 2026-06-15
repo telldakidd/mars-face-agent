@@ -48,6 +48,9 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.get("/live", (_req, res) => {
   res.sendFile(path.join(__dirname, "../public/live.html"));
 });
+app.get("/yahkyraa", (_req, res) => {
+  res.sendFile(path.join(__dirname, "../public/yahkyraa.html"));
+});
 
 // Routes
 app.use("/api",              eaWebhooksRouter);   // EA webhook receiver (heartbeat, pamm_status, trade, settle)
