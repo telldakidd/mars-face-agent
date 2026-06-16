@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MARS // CONTROL — ADMIN OVERVIEW</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cyan:   #00d9ff;
+    --red:    #ff003c;
+    --amber:  #ffb400;
+    --green:  #00ff66;
+    --void:   #020204;
+    --card:   #0a0c14;
+    --border: rgba(0,217,255,0.08);
+  }
+
+  html, body {
+    background: var(--void);
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,217,255,0.01) 0px, rgba(0,217,255,0.01) 1px,
+      transparent 1px, transparent 3px);
+  }
+
+  .grid-bg {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,217,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,217,255,0.025) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: grid-scroll 20s linear infinite;
+  }
+  @keyframes grid-scroll {
+    0%   { background-position: 0 0; }
+    100% { background-position: 0 50px; }
+  }
+
+  .page { position: relative; z-index: 1; max-width: 1300px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  .header {
+    position: relative; overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 28px; margin-bottom: 32px;
+  }
+  .scan-line {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0,217,255,0.35), transparent);
+    animation: h-scan 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes h-scan {
+    0%,100% { top: -2px; opacity: 0; }
+    10% { opacity: 0.6; }
+    50% { top: 100%; opacity: 0.3; }
+    90% { opacity: 0.6; }
+    95% { top: 100%; opacity: 0; }
+  }
+  .header-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  .brand-eye {
+    font-size: 9px; letter-spacing: 0.6em; color: rgba(0,217,255,0.4);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .brand-title {
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 800; letter-spacing: 0.12em;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0,217,255,0.5), 0 0 60px rgba(0,217,255,0.15);
+  }
+  .brand-sub {
+    font-size: 10px; color: rgba(255,255,255,0.2);
+    letter-spacing: 0.3em; margin-top: 6px;
+  }
+  .last-updated { font-size: 9px; color: rgba(255,255,255,0.15); letter-spacing: 0.15em; text-align: right; }
+
+  .summary-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 28px;
+  }
+  .summary-card {
+    background: var(--card); border: 1px solid var(--border);
+    padding: 16px; position: relative; overflow: hidden;
+  }
+  .summary-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, rgba(0,217,255,0.2), transparent);
+  }
+  .summary-label { font-size: 8px; color: rgba(255,255,255,0.2); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 8px; }
+  .summary-value { font-size: 22px; font-weight: 700; }
+  .summary-value.green { color: var(--green); }
+  .summary-value.red   { color: var(--red); }
+  .summary-value.cyan  { color: var(--cyan); }
+  .summary-value.white { color: rgba(255,255,255,0.8); }
+
+  .client-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .client-card {
+    background: var(--card); border: 1px solid var(--border);
+    padding: 22px; position: relative; overflow: hidden;
+    text-decoration: none; color: inherit;
+    display: block; transition: border-color 0.2s, transform 0.2s;
+  }
+  .client-card:hover { border-color: rgba(0,217,255,0.4); transform: translateY(-2px); }
+  .client-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, currentColor, transparent);
+    opacity: 0.35; color: var(--cyan);
+  }
+  .client-card::after {
+    content: ""; position: absolute; bottom: -1px; right: -1px;
+    width: 14px; height: 14px;
+    border-bottom: 2px solid; border-right: 2px solid;
+    opacity: 0.4; color: var(--cyan);
+  }
+  .client-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .client-name { font-size: 18px; font-weight: 800; letter-spacing: 0.08em; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid; padding: 4px 10px; font-size: 8px;
+    letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;
+  }
+  .pill-live    { border-color: rgba(0,255,102,0.4);  background: rgba(0,255,102,0.07);  color: var(--green); }
+  .pill-stale   { border-color: rgba(255,180,0,0.3);  background: rgba(255,180,0,0.05);  color: var(--amber); }
+  .pill-offline { border-color: rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.25); }
+  .pill-danger  { border-color: rgba(255,0,60,0.4);   background: rgba(255,0,60,0.08);   color: var(--red); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .dot-pulse { animation: dot-pulse 2s ease-in-out infinite; }
+  @keyframes dot-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,255,102,0.6); }
+    50%      { box-shadow: 0 0 0 6px rgba(0,255,102,0); }
+  }
+  .client-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .cstat-label { font-size: 8px; color: rgba(255,255,255,0.2); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 4px; }
+  .cstat-value { font-size: 16px; font-weight: 700; }
+  .cstat-value.green { color: var(--green); }
+  .cstat-value.red   { color: var(--red); }
+  .cstat-value.white { color: rgba(255,255,255,0.75); }
+  .kill-flag {
+    border: 1px solid rgba(255,0,60,0.4); background: rgba(255,0,60,0.07);
+    padding: 6px 10px; font-size: 9px; color: var(--red);
+    letter-spacing: 0.15em; margin-bottom: 12px;
+  }
+  .client-link { font-size: 9px; color: rgba(0,217,255,0.5); letter-spacing: 0.2em; }
+
+  .footer {
+    border-top: 1px solid var(--border); padding-top: 20px; margin-top: 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .footer-brand { font-size: 9px; color: rgba(255,255,255,0.1); letter-spacing: 0.3em; }
+  .footer-meta  { font-size: 8px; color: rgba(255,255,255,0.08); letter-spacing: 0.15em; }
+
+  .loading { text-align: center; padding: 80px 0; }
+  .loading-text { font-size: 11px; color: rgba(0,217,255,0.5); letter-spacing: 0.4em; }
+  .loading-bar {
+    width: 200px; height: 1px; background: rgba(255,255,255,0.05);
+    margin: 16px auto 0; position: relative; overflow: hidden;
+  }
+  .loading-bar::after {
+    content: ""; position: absolute; inset: 0;
+    background: var(--cyan);
+    animation: loading-sweep 1.5s ease-in-out infinite;
+  }
+  @keyframes loading-sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<div class="page" id="app">
+  <div class="loading" id="loading">
+    <p class="loading-text">INITIALIZING CONTROL FEED</p>
+    <div class="loading-bar"></div>
+  </div>
+</div>
+
+<script>
+function fmt(n, d = 2) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function isLive(ts) {
+  return !!ts && Date.now() - new Date(ts).getTime() < 120000;
+}
+
+async function fetchAll() {
+  const res = await fetch('/api/basketbot/all');
+  return res.ok ? res.json() : [];
+}
+
+function clientCard(c) {
+  const live = isLive(c.last_heartbeat);
+  const offline = !c.last_heartbeat;
+  const killSwitch = !!c.kill_switch;
+
+  let pill;
+  if (killSwitch) pill = `<div class="pill pill-danger"><span class="dot"></span>KILLED</div>`;
+  else if (offline) pill = `<div class="pill pill-offline"><span class="dot"></span>OFFLINE</div>`;
+  else if (live) pill = `<div class="pill pill-live"><span class="dot dot-pulse"></span>LIVE</div>`;
+  else pill = `<div class="pill pill-stale"><span class="dot"></span>STALE</div>`;
+
+  const equity = c.equity ?? null;
+  const floating = c.floating_pnl ?? 0;
+
+  return `
+    <a class="client-card" href="${c.path}">
+      <div class="client-top">
+        <div class="client-name">${c.label}</div>
+        ${pill}
+      </div>
+      ${killSwitch ? '<div class="kill-flag">⚠ KILL SWITCH ACTIVE — TRADING HALTED</div>' : ''}
+      <div class="client-stats">
+        <div>
+          <div class="cstat-label">Equity</div>
+          <div class="cstat-value white">${equity != null ? '$' + fmt(equity) : '—'}</div>
+        </div>
+        <div>
+          <div class="cstat-label">Floating P&amp;L</div>
+          <div class="cstat-value ${floating >= 0 ? 'green' : 'red'}">${floating >= 0 ? '+' : ''}$${fmt(floating)}</div>
+        </div>
+        <div>
+          <div class="cstat-label">Positions</div>
+          <div class="cstat-value white">${c.positions ?? '—'}</div>
+        </div>
+        <div>
+          <div class="cstat-label">Phase</div>
+          <div class="cstat-value white">${c.phase ?? '—'}</div>
+        </div>
+      </div>
+      <div class="client-link">VIEW DASHBOARD &rarr;</div>
+    </a>`;
+}
+
+function render(clients) {
+  const liveCount = clients.filter(c => isLive(c.last_heartbeat)).length;
+  const totalEquity = clients.reduce((s, c) => s + (c.equity ?? 0), 0);
+  const totalFloating = clients.reduce((s, c) => s + (c.floating_pnl ?? 0), 0);
+  const killedCount = clients.filter(c => c.kill_switch).length;
+
+  const html = `
+    <header class="header">
+      <div class="scan-line"></div>
+      <div class="header-top">
+        <div>
+          <p class="brand-eye">SYS://MARS.MANAGEMENT // CONTROL CENTER</p>
+          <h1 class="brand-title">MAIN CONTROL</h1>
+          <p class="brand-sub">MONITORING ${clients.length} ACCOUNT${clients.length === 1 ? '' : 'S'} &bull; AUTO-REFRESHES EVERY 5s</p>
+        </div>
+        <div class="last-updated" id="last-updated">—</div>
+      </div>
+    </header>
+
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="summary-label">Accounts Live</div>
+        <div class="summary-value ${liveCount === clients.length ? 'green' : 'amber'}">${liveCount} / ${clients.length}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Total Equity</div>
+        <div class="summary-value cyan">$${fmt(totalEquity)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Total Floating P&amp;L</div>
+        <div class="summary-value ${totalFloating >= 0 ? 'green' : 'red'}">${totalFloating >= 0 ? '+' : ''}$${fmt(totalFloating)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Kill Switches Active</div>
+        <div class="summary-value ${killedCount > 0 ? 'red' : 'white'}">${killedCount}</div>
+      </div>
+    </div>
+
+    <div class="client-grid">
+      ${clients.map(clientCard).join('')}
+    </div>
+
+    <footer class="footer">
+      <div class="footer-brand">MARS MANAGEMENT // ADMIN ONLY</div>
+      <div class="footer-meta">DATA UPDATES EVERY 5 SECONDS &bull; CONFIDENTIAL</div>
+    </footer>
+  `;
+
+  document.getElementById('loading')?.remove();
+  document.getElementById('app').innerHTML = html;
+  updateClock();
+}
+
+function updateClock() {
+  const el = document.getElementById('last-updated');
+  if (el) el.textContent = 'UPDATED ' + new Date().toLocaleTimeString('en-US', { hour12: false });
+}
+
+async function tick() {
+  try {
+    const clients = await fetchAll();
+    render(clients);
+  } catch (e) {
+    updateClock();
+  }
+}
+
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

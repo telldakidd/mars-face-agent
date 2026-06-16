@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YAHKYRAA // ALGO TRADING — LIVE</title>
+<title>RU // ALGO TRADING — LIVE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --cyan:   #b833ff;
+    --cyan:   #00ffc8;
     --red:    #ff003c;
     --amber:  #ffb400;
     --green:  #00ff66;
-    --purple: #b833ff;
+    --purple: #00ffc8;
     --void:   #020204;
     --card:   #0a0c14;
-    --border: rgba(184,51,255,0.08);
+    --border: rgba(0,255,200,0.08);
   }
 
   html, body {
@@ -34,7 +34,7 @@
     position: fixed; inset: 0;
     pointer-events: none; z-index: 9999;
     background: repeating-linear-gradient(0deg,
-      rgba(184,51,255,0.01) 0px, rgba(184,51,255,0.01) 1px,
+      rgba(0,255,200,0.01) 0px, rgba(0,255,200,0.01) 1px,
       transparent 1px, transparent 3px);
   }
 
@@ -42,8 +42,8 @@
   .grid-bg {
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
     background-image:
-      linear-gradient(rgba(184,51,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(184,51,255,0.025) 1px, transparent 1px);
+      linear-gradient(rgba(0,255,200,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,200,0.025) 1px, transparent 1px);
     background-size: 50px 50px;
     animation: grid-scroll 20s linear infinite;
   }
@@ -62,7 +62,7 @@
   }
   .scan-line {
     position: absolute; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(184,51,255,0.35), transparent);
+    background: linear-gradient(90deg, transparent, rgba(0,255,200,0.35), transparent);
     animation: h-scan 8s ease-in-out infinite;
     pointer-events: none;
   }
@@ -78,19 +78,19 @@
     justify-content: space-between; flex-wrap: wrap; gap: 16px;
   }
   .brand-eye {
-    font-size: 9px; letter-spacing: 0.6em; color: rgba(184,51,255,0.4);
+    font-size: 9px; letter-spacing: 0.6em; color: rgba(0,255,200,0.4);
     text-transform: uppercase; margin-bottom: 8px;
   }
   .brand-title {
     font-size: clamp(32px, 6vw, 56px);
     font-weight: 800; letter-spacing: 0.12em;
     color: var(--purple);
-    text-shadow: 0 0 20px rgba(184,51,255,0.5), 0 0 60px rgba(184,51,255,0.15);
+    text-shadow: 0 0 20px rgba(0,255,200,0.5), 0 0 60px rgba(0,255,200,0.15);
     animation: title-pulse 4s ease-in-out infinite;
   }
   @keyframes title-pulse {
-    0%,100% { text-shadow: 0 0 20px rgba(184,51,255,0.5), 0 0 60px rgba(184,51,255,0.15); }
-    50%      { text-shadow: 0 0 30px rgba(184,51,255,0.7), 0 0 80px rgba(184,51,255,0.25); }
+    0%,100% { text-shadow: 0 0 20px rgba(0,255,200,0.5), 0 0 60px rgba(0,255,200,0.15); }
+    50%      { text-shadow: 0 0 30px rgba(0,255,200,0.7), 0 0 80px rgba(0,255,200,0.25); }
   }
   .brand-sub {
     font-size: 10px; color: rgba(255,255,255,0.2);
@@ -102,7 +102,7 @@
     border: 1px solid; padding: 6px 12px; font-size: 9px;
     letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;
   }
-  .pill-live   { border-color: rgba(184,51,255,0.4); background: rgba(184,51,255,0.07); color: var(--purple); }
+  .pill-live   { border-color: rgba(0,255,200,0.4); background: rgba(0,255,200,0.07); color: var(--purple); }
   .pill-stale  { border-color: rgba(255,180,0,0.3);  background: rgba(255,180,0,0.05);  color: var(--amber); }
   .pill-offline{ border-color: rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.2); }
   .pill-danger { border-color: rgba(255,0,60,0.4);   background: rgba(255,0,60,0.08);   color: var(--red); }
@@ -115,8 +115,8 @@
     animation: dot-pulse 2s ease-in-out infinite;
   }
   @keyframes dot-pulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(184,51,255,0.6); }
-    50%      { box-shadow: 0 0 0 6px rgba(184,51,255,0); }
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,255,200,0.6); }
+    50%      { box-shadow: 0 0 0 6px rgba(0,255,200,0); }
   }
   .last-updated { font-size: 9px; color: rgba(255,255,255,0.15); letter-spacing: 0.15em; }
 
@@ -132,7 +132,7 @@
     border: 1px solid;
   }
   .pnl-card-profit { border-color: rgba(0,255,102,0.15); }
-  .pnl-card-equity { border-color: rgba(184,51,255,0.12); }
+  .pnl-card-equity { border-color: rgba(0,255,200,0.12); }
   .pnl-card::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
     background: linear-gradient(90deg, currentColor, transparent);
@@ -175,7 +175,7 @@
   }
   .stat-card::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, rgba(184,51,255,0.2), transparent);
+    background: linear-gradient(90deg, rgba(0,255,200,0.2), transparent);
   }
   .stat-label { font-size: 8px; color: rgba(255,255,255,0.2); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 8px; }
   .stat-value { font-size: 18px; font-weight: 700; }
@@ -195,11 +195,11 @@
   }
   .status-banner::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, rgba(184,51,255,0.25), transparent);
+    background: linear-gradient(90deg, rgba(0,255,200,0.25), transparent);
   }
   .status-left { display: flex; align-items: center; gap: 16px; }
   .phase-badge {
-    border: 1px solid rgba(184,51,255,0.25); background: rgba(184,51,255,0.07);
+    border: 1px solid rgba(0,255,200,0.25); background: rgba(0,255,200,0.07);
     padding: 6px 14px; font-size: 11px; font-weight: 700;
     letter-spacing: 0.25em; color: var(--purple);
   }
@@ -292,11 +292,11 @@
   }
   .footer-brand { font-size: 9px; color: rgba(255,255,255,0.1); letter-spacing: 0.3em; }
   .footer-meta  { font-size: 8px; color: rgba(255,255,255,0.08); letter-spacing: 0.15em; }
-  .footer-live  { font-size: 9px; color: rgba(184,51,255,0.4); letter-spacing: 0.2em; }
+  .footer-live  { font-size: 9px; color: rgba(0,255,200,0.4); letter-spacing: 0.2em; }
 
   /* ── LOADING STATE ── */
   .loading { text-align: center; padding: 80px 0; }
-  .loading-text { font-size: 11px; color: rgba(184,51,255,0.5); letter-spacing: 0.4em; }
+  .loading-text { font-size: 11px; color: rgba(0,255,200,0.5); letter-spacing: 0.4em; }
   .loading-bar {
     width: 200px; height: 1px; background: rgba(255,255,255,0.05);
     margin: 16px auto 0; position: relative; overflow: hidden;
@@ -313,7 +313,7 @@
 
   /* number flash */
   @keyframes num-flash {
-    0%   { color: var(--purple); text-shadow: 0 0 20px rgba(184,51,255,0.8); }
+    0%   { color: var(--purple); text-shadow: 0 0 20px rgba(0,255,200,0.8); }
     100% { color: inherit; text-shadow: inherit; }
   }
   .flash { animation: num-flash 0.7s ease-out; }
@@ -321,11 +321,11 @@
   /* client watermark */
   .client-badge {
     display: inline-block;
-    border: 1px solid rgba(184,51,255,0.2);
-    background: rgba(184,51,255,0.05);
+    border: 1px solid rgba(0,255,200,0.2);
+    background: rgba(0,255,200,0.05);
     padding: 3px 10px;
     font-size: 8px; letter-spacing: 0.3em;
-    color: rgba(184,51,255,0.5);
+    color: rgba(0,255,200,0.5);
     margin-top: 10px;
   }
 </style>
@@ -342,7 +342,7 @@
 
 <script>
 const API = '';
-const BOT = 'yahkyraa';
+const BOT = 'ru';
 let prevEquity = null;
 let prevPnl = null;
 
@@ -446,7 +446,7 @@ function render({ bot, stats, trades: tradeList }) {
       <div class="header-top">
         <div>
           <p class="brand-eye">SYS://MARS.MANAGEMENT // PRIVATE TRADING TERMINAL</p>
-          <h1 class="brand-title">YAHKYRAA</h1>
+          <h1 class="brand-title">RU</h1>
           <p class="brand-sub">LIVE PERFORMANCE FEED &bull; AUTO-REFRESHES EVERY 5s</p>
           <div class="client-badge">CLIENT ACCOUNT &bull; POWERED BY MARS MANAGEMENT</div>
         </div>
